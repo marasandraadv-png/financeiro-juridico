@@ -1,0 +1,663 @@
+import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
+
+const CAT_E = ["Honorários","Êxito/Acordo","Consultoria","Antecipação","Outras Receitas"];
+const CAT_S = ["Aluguel","Salários","Impostos/OAB","Marketing","Tecnologia","Deslocamento","Tarifas","Outras Despesas"];
+const CONTAS = ["Caixa","Banco do Brasil","Caixa Econômica","Bradesco","Itaú","Santander","Nubank","Sicoob","Sicredi","Outro"];
+const M = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+const fmt = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v||0);
+const fmtD = (s) => s ? new Date(s+"T12:00:00").toLocaleDateString("pt-BR") : "—";
+const today = () => new Date().toISOString().split("T")[0];
+const newP = (id) => ({ id, valor:"", dataVenc:today(), dataBaixa:"", status:"pendente" });
+const emptyForm = () => ({
+  tipo:"entrada", cliente:"", processo:"", parceria:"",
+  categoria:CAT_E[0], descricao:"", formaPag:"avista",
+  contaBancaria:"Bradesco", parcelas:[ newP(Date.now()) ]
+});
+
+const STORAGE_KEY = "fjur-data-v1";
+
+export default function App() {
+  const [data, setData] = useState([]);
+  const [view, setView] = useState("dashboard");
+  const [m, setM] = useState(new Date().getMonth());
+  const [y, setY] = useState(new Date().getFullYear());
+  const [loaded, setLoaded] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [form, setForm] = useState(emptyForm());
+  const [editId, setEditId] = useState(null);
+  const [fSit, setFSit] = useState("todos");
+  const [fTipo, setFTipo] = useState("todos");
+  const [fConta, setFConta] = useState("todas");
+  const [fBusca, setFBusca] = useState("");
+  const [baixaModal, setBaixaModal] = useState(null);
+
+  // Carregar do localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setData(JSON.parse(raw));
+    } catch (e) { console.error(e); }
+    setLoaded(true);
+  }, []);
+
+  // Salvar no localStorage
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { console.error(e); }
+  }, [data, loaded]);
+
+  const tst = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2600); };
+
+  const flat = (mm, yy) => {
+    const r = [];
+    data.forEach(l => l.parcelas.forEach(p => {
+      const d = new Date((p.status==="baixado" ? p.dataBaixa : p.dataVenc)+"T12:00:00");
+      if (d.getMonth()===mm && d.getFullYear()===yy)
+        r.push({...p, lid:l.id, tipo:l.tipo, cliente:l.cliente, processo:l.processo,
+          parceria:l.parceria, categoria:l.categoria, descricao:l.descricao,
+          contaBancaria:l.contaBancaria, formaPag:l.formaPag, nParcs:l.parcelas.length});
+    }));
+    return r;
+  };
+
+  const dadosMes = flat(m, y);
+  const recebido = dadosMes.filter(p=>p.tipo==="entrada"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0);
+  const pago = dadosMes.filter(p=>p.tipo==="saida"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0);
+  const aReceber = dadosMes.filter(p=>p.tipo==="entrada"&&p.status==="pendente").reduce((s,p)=>s+p.valor,0);
+  const aPagar = dadosMes.filter(p=>p.tipo==="saida"&&p.status==="pendente").reduce((s,p)=>s+p.valor,0);
+  const saldoReal = recebido - pago;
+
+  const filtrado = dadosMes.filter(p => {
+    if (fTipo!=="todos" && p.tipo!==fTipo) return false;
+    if (fSit==="aReceber" && !(p.tipo==="entrada"&&p.status==="pendente")) return false;
+    if (fSit==="recebidos" && !(p.tipo==="entrada"&&p.status==="baixado")) return false;
+    if (fSit==="aPagar" && !(p.tipo==="saida"&&p.status==="pendente")) return false;
+    if (fSit==="pagos" && !(p.tipo==="saida"&&p.status==="baixado")) return false;
+    if (fSit==="pendentes" && p.status!=="pendente") return false;
+    if (fSit==="baixados" && p.status!=="baixado") return false;
+    if (fConta!=="todas" && p.contaBancaria!==fConta) return false;
+    if (fBusca && ![p.cliente,p.processo,p.parceria,p.descricao].some(x=>x?.toLowerCase().includes(fBusca.toLowerCase()))) return false;
+    return true;
+  }).sort((a,b)=>{
+    const da = new Date((a.status==="baixado"?a.dataBaixa:a.dataVenc));
+    const db = new Date((b.status==="baixado"?b.dataBaixa:b.dataVenc));
+    return db - da;
+  });
+
+  const hist = Array.from({length:6},(_,i)=>{
+    let mm=m-i, yy=y; if(mm<0){mm+=12;yy--;}
+    const ps = flat(mm,yy);
+    return { label:M[mm].slice(0,3)+"/"+String(yy).slice(2),
+      r:ps.filter(p=>p.tipo==="entrada"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0),
+      pg:ps.filter(p=>p.tipo==="saida"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0) };
+  }).reverse();
+  const maxBar = Math.max(...hist.flatMap(h=>[h.r,h.pg]),1);
+
+  const setF = (k,v) => setForm(prev=>{ const u={...prev,[k]:v}; if(k==="tipo") u.categoria=v==="entrada"?CAT_E[0]:CAT_S[0]; return u; });
+  const addP = () => setForm(p=>({...p, parcelas:[...p.parcelas, newP(Date.now())]}));
+  const remP = (id) => setForm(p=>({...p, parcelas:p.parcelas.filter(x=>x.id!==id)}));
+  const updP = (id,k,v) => setForm(p=>({...p, parcelas:p.parcelas.map(x=>x.id===id?{...x,[k]:v}:x)}));
+
+  const submit = () => {
+    if (!form.cliente.trim()) { tst("Informe o cliente / fornecedor.","err"); return; }
+    const ps = form.parcelas.filter(p=>parseFloat(String(p.valor).replace(",","."))>0);
+    if (!ps.length) { tst("Informe ao menos um valor.","err"); return; }
+    const lanc = {
+      id:editId||Date.now(), ...form,
+      parcelas:ps.map((p,i)=>({...p, numero:i+1, valor:parseFloat(String(p.valor).replace(",","."))}))
+    };
+    if (editId) { setData(prev=>prev.map(l=>l.id===editId?lanc:l)); tst("Atualizado!"); }
+    else { setData(prev=>[...prev,lanc]); tst("Lançamento salvo!"); }
+    setForm(emptyForm()); setEditId(null); setView("extrato");
+  };
+
+  const editar = (lid) => {
+    const l=data.find(x=>x.id===lid); if(!l) return;
+    setForm({...l, parcelas:l.parcelas.map(p=>({...p, valor:String(p.valor)}))});
+    setEditId(l.id); setView("lancamento");
+  };
+
+  const excluir = (lid) => { if(confirm("Excluir este lançamento e todas as parcelas?")) { setData(prev=>prev.filter(l=>l.id!==lid)); tst("Excluído.","err"); } };
+
+  const baixar = (lid, pid, dataBaixa, conta) => {
+    setData(prev=>prev.map(l=>{
+      if(l.id!==lid) return l;
+      return {...l, contaBancaria: conta||l.contaBancaria,
+        parcelas:l.parcelas.map(p=>p.id===pid ? {...p, status:"baixado", dataBaixa} : p)};
+    }));
+    tst("Baixa registrada!");
+    setBaixaModal(null);
+  };
+
+  const estornar = (lid, pid) => {
+    setData(prev=>prev.map(l=>l.id!==lid?l:{...l, parcelas:l.parcelas.map(p=>p.id===pid?{...p,status:"pendente",dataBaixa:""}:p)}));
+    tst("Estornado.","err");
+  };
+
+  // BACKUP / RESTORE
+  const exportarBackup = () => {
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Backup_Financeiro_${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    tst("Backup baixado!");
+  };
+
+  const importarBackup = (e) => {
+    const f = e.target.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const novo = JSON.parse(ev.target.result);
+        if (!Array.isArray(novo)) throw new Error("Formato inválido");
+        if (confirm(`Restaurar backup com ${novo.length} lançamentos? Os dados atuais serão substituídos.`)) {
+          setData(novo); tst("Backup restaurado!");
+        }
+      } catch (err) { tst("Arquivo de backup inválido.","err"); }
+    };
+    reader.readAsText(f);
+    e.target.value = "";
+  };
+
+  const expExcel = () => {
+    const rows = filtrado.map(p=>({
+      "Tipo": p.tipo==="entrada"?"Entrada":"Saída",
+      "Situação": p.status==="baixado" ? (p.tipo==="entrada"?"Recebido":"Pago") : (p.tipo==="entrada"?"A Receber":"A Pagar"),
+      "Cliente/Fornecedor": p.cliente,
+      "Nº Processo": p.processo||"",
+      "Parceria": p.parceria||"",
+      "Categoria": p.categoria,
+      "Descrição": p.descricao||"",
+      "Forma": p.formaPag==="avista"?"À Vista":`Parcelado (${p.nParcs}x)`,
+      "Parcela": p.nParcs>1?`${p.numero}/${p.nParcs}`:"-",
+      "Conta Bancária": p.contaBancaria,
+      "Vencimento": fmtD(p.dataVenc),
+      "Data Baixa": fmtD(p.dataBaixa),
+      "Valor (R$)": p.valor,
+    }));
+    const resumo = [
+      ["RELATÓRIO FINANCEIRO", `${M[m]} ${y}`],[],
+      ["Recebido", recebido],["Pago", pago],["Saldo Realizado", recebido-pago],
+      [],["A Receber (pendente)", aReceber],["A Pagar (pendente)", aPagar],
+      ["Saldo Previsto", (recebido+aReceber)-(pago+aPagar)],
+    ];
+    const wb=XLSX.utils.book_new();
+    const ws1=XLSX.utils.aoa_to_sheet(resumo); ws1["!cols"]=[{wch:24},{wch:18}];
+    XLSX.utils.book_append_sheet(wb,ws1,"Resumo");
+    const ws2=XLSX.utils.json_to_sheet(rows);
+    ws2["!cols"]=Object.keys(rows[0]||{}).map(k=>({wch:Math.max(k.length+2,16)}));
+    XLSX.utils.book_append_sheet(wb,ws2,`${M[m]} ${y}`);
+    XLSX.writeFile(wb,`Financeiro_${M[m]}_${y}.xlsx`);
+    tst("Excel exportado!");
+  };
+
+  const expPDF = () => {
+    const linhas = filtrado.map(p=>{
+      const sitLabel = p.status==="baixado" ? (p.tipo==="entrada"?"Recebido":"Pago") : (p.tipo==="entrada"?"A Receber":"A Pagar");
+      const sitClass = p.status==="baixado" ? "tg" : (p.tipo==="entrada"?"ty":"to");
+      return `<tr>
+        <td><span class="${p.tipo==="entrada"?"te":"ts"}">${p.tipo==="entrada"?"Entrada":"Saída"}</span></td>
+        <td><span class="${sitClass}">${sitLabel}</span></td>
+        <td><b>${p.cliente}</b>${p.parceria?`<br><small>🤝 ${p.parceria}</small>`:""}</td>
+        <td>${p.processo||"—"}</td>
+        <td>${p.categoria}</td>
+        <td style="text-align:center">${p.nParcs>1?`${p.numero}/${p.nParcs}`:"—"}</td>
+        <td>${p.contaBancaria}</td>
+        <td>${fmtD(p.dataVenc)}</td>
+        <td>${fmtD(p.dataBaixa)}</td>
+        <td style="text-align:right;font-weight:700;color:${p.tipo==="entrada"?"#166534":"#991b1b"}">${fmt(p.valor)}</td>
+      </tr>`;
+    }).join("");
+    const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório ${M[m]} ${y}</title>
+    <style>body{font-family:Arial,sans-serif;font-size:10px;color:#111;padding:18px}
+    h1{font-size:17px;color:#1e3a5f;margin:0 0 2px}
+    .sh{color:#555;font-size:11px;margin-bottom:18px}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+    .card{border:1px solid #ddd;border-radius:6px;padding:10px}
+    .cl{font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+    .cv{font-size:14px;font-weight:700}
+    table{width:100%;border-collapse:collapse}
+    th{background:#1e3a5f;color:#fff;padding:7px 5px;text-align:left;font-size:9px}
+    td{padding:5px;border-bottom:1px solid #eee;vertical-align:middle}
+    tr:nth-child(even) td{background:#f8fafc}
+    .te,.tg{background:#dcfce7;color:#166534;padding:2px 7px;border-radius:10px;font-size:8px;font-weight:700;white-space:nowrap}
+    .ts,.to{background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:10px;font-size:8px;font-weight:700;white-space:nowrap}
+    .ty{background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;font-size:8px;font-weight:700;white-space:nowrap}
+    small{color:#888;font-size:8px}
+    .ft{margin-top:18px;font-size:9px;color:#aaa;border-top:1px solid #eee;padding-top:8px}
+    @media print{@page{margin:10mm;size:A4 landscape}}</style></head><body>
+    <h1>⚖️ Relatório Financeiro Jurídico</h1>
+    <div class="sh">${M[m]} ${y} • ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")} • ${filtrado.length} lançamento(s)</div>
+    <div class="cards">
+      <div class="card"><div class="cl">Recebido</div><div class="cv" style="color:#166534">${fmt(recebido)}</div></div>
+      <div class="card"><div class="cl">Pago</div><div class="cv" style="color:#991b1b">${fmt(pago)}</div></div>
+      <div class="card"><div class="cl">A Receber</div><div class="cv" style="color:#92400e">${fmt(aReceber)}</div></div>
+      <div class="card"><div class="cl">A Pagar</div><div class="cv" style="color:#92400e">${fmt(aPagar)}</div></div>
+    </div>
+    <div style="margin-bottom:14px;font-size:11px"><b>Saldo Realizado:</b> <span style="color:${saldoReal>=0?"#166534":"#991b1b"};font-weight:700">${fmt(saldoReal)}</span></div>
+    <table><thead><tr><th>Tipo</th><th>Situação</th><th>Cliente/Fornecedor</th><th>Processo</th><th>Categoria</th><th>Parc.</th><th>Conta</th><th>Vencimento</th><th>Baixa</th><th>Valor</th></tr></thead>
+    <tbody>${linhas}</tbody></table>
+    <div class="ft">Gerado pelo Sistema Financeiro Jurídico</div></body></html>`;
+    const w=window.open("","_blank","width=1100,height=700");
+    w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600);
+    tst("PDF gerado!");
+  };
+
+  const cats = form.tipo==="entrada" ? CAT_E : CAT_S;
+  const allClientes = [...new Set(data.map(l=>l.cliente).filter(Boolean))];
+
+  const S = `
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+    *{box-sizing:border-box}
+    ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#161b22}::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+    input,select{outline:none}
+    .inp{background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:9px 12px;border-radius:8px;font-size:13px;width:100%;font-family:inherit}
+    .inp:focus{border-color:#58a6ff}.inp::placeholder{color:#484f58}
+    .card{background:#161b22;border:1px solid #21262d;border-radius:12px;padding:20px}
+    .lbl{font-size:11px;color:#8b949e;margin-bottom:5px;font-weight:500}
+    .btn-p{background:#238636;border:none;color:#fff;padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit}
+    .btn-p:hover{background:#2ea043}
+    .btn-g{background:transparent;border:1px solid #30363d;color:#8b949e;padding:7px 13px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .2s}
+    .btn-g:hover{border-color:#58a6ff;color:#58a6ff}.btn-g:disabled{opacity:.4}.btn-g.act{border-color:#58a6ff;color:#58a6ff;background:#1f2d4a30}
+    .btn-d{background:transparent;border:1px solid #da3633;color:#f85149;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit}
+    .btn-d:hover{background:#3d1f1f}
+    .btn-baixa{background:#238636;border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit}
+    .btn-baixa:hover{background:#2ea043}
+    .nav-b{background:transparent;border:none;color:#8b949e;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;white-space:nowrap}
+    .nav-b.act{background:#21262d;color:#e6edf3}.nav-b:hover:not(.act){color:#c9d1d9}
+    .row-i{display:flex;align-items:flex-start;padding:14px 0;border-bottom:1px solid #21262d;gap:12px}
+    .row-i:last-child{border-bottom:none}
+    .tag{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
+    .t-ent{background:#1f4a2e;color:#3fb950}.t-sai{background:#3d1f1f;color:#f85149}
+    .t-rec{background:#1f4a2e;color:#3fb950}.t-pago{background:#1f4a2e;color:#3fb950}
+    .t-arec{background:#2d2a1a;color:#e3b341}.t-apag{background:#3a1f2d;color:#ff7b9c}
+    .sw{display:flex;background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden}
+    .sw-b{flex:1;padding:8px;background:transparent;border:none;color:#8b949e;font-size:13px;font-family:inherit;cursor:pointer}
+    .sw-b.act{background:#238636;color:#fff;font-weight:600}
+    .sw-b.act-r{background:#da3633;color:#fff;font-weight:600}
+    .pbox{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;margin-bottom:10px}
+    .pbox.pend{border-left:3px solid #e3b341}
+    .pbox.bx{border-left:3px solid #3fb950}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 20px #00000080}
+    .sec-t{font-weight:700;font-size:14px;margin-bottom:16px}
+    .mono{font-family:'DM Mono',monospace}
+    .mdl{position:fixed;inset:0;background:#00000099;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+    .mdl-c{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:420px;width:100%}
+    @media (max-width: 720px) {
+      .grid-resp { grid-template-columns: 1fr 1fr !important; }
+      .grid-resp-1 { grid-template-columns: 1fr !important; }
+      .grid-resp-2 { grid-template-columns: 1fr 1fr !important; }
+      .nav-b { padding: 8px 10px !important; font-size: 12px !important; }
+    }
+  `;
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0d1117",color:"#e6edf3",fontFamily:"'DM Sans','Segoe UI',sans-serif",paddingBottom:60}}>
+      <style>{S}</style>
+
+      {toast && <div className="toast" style={{background:toast.type==="err"?"#3d1f1f":"#1a3a28",color:toast.type==="err"?"#f85149":"#3fb950",border:`1px solid ${toast.type==="err"?"#da3633":"#238636"}`}}>{toast.msg}</div>}
+
+      {baixaModal && (
+        <BaixaModal item={baixaModal} contas={CONTAS} onClose={()=>setBaixaModal(null)} onConfirm={(d,c)=>baixar(baixaModal.lid,baixaModal.id,d,c)} />
+      )}
+
+      <div style={{background:"#161b22",borderBottom:"1px solid #21262d",padding:"0 20px",position:"sticky",top:0,zIndex:100}}>
+        <div style={{maxWidth:1080,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:58,gap:8,flexWrap:"wrap"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:20}}>⚖️</span>
+            <span style={{fontWeight:700,fontSize:15}}>Financeiro Jurídico</span>
+          </div>
+          <div style={{display:"flex",gap:2}}>
+            {[["dashboard","📊 Dashboard"],["lancamento","➕ Lançar"],["extrato","📋 Extrato"],["config","⚙️"]].map(([v,l])=>(
+              <button key={v} className={`nav-b ${view===v?"act":""}`} onClick={()=>{setView(v);if(v==="lancamento"){setForm(emptyForm());setEditId(null);}}}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{maxWidth:1080,margin:"0 auto",padding:"24px 20px"}}>
+
+        {view!=="config" && (
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
+            <button className="btn-g" onClick={()=>{let mm=m-1,yy=y;if(mm<0){mm=11;yy--;}setM(mm);setY(yy);}}>‹</button>
+            <span style={{fontWeight:600,fontSize:15,minWidth:160,textAlign:"center"}}>{M[m]} {y}</span>
+            <button className="btn-g" onClick={()=>{let mm=m+1,yy=y;if(mm>11){mm=0;yy++;}setM(mm);setY(yy);}}>›</button>
+          </div>
+        )}
+
+        {view==="dashboard" && (
+          <>
+            <div className="grid-resp" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+              {[
+                {l:"✓ Recebido",v:recebido,c:"#3fb950",b:"#1f4a2e"},
+                {l:"✓ Pago",v:pago,c:"#f85149",b:"#3d1f1f"},
+                {l:"⏳ A Receber",v:aReceber,c:"#e3b341",b:"#2d2a1a"},
+                {l:"⏳ A Pagar",v:aPagar,c:"#ff7b9c",b:"#3a1f2d"},
+              ].map(c=>(
+                <div key={c.l} className="card" style={{borderColor:c.b,padding:16}}>
+                  <div style={{fontSize:11,color:"#8b949e",marginBottom:6,fontWeight:500}}>{c.l}</div>
+                  <div className="mono" style={{color:c.c,fontSize:18,fontWeight:700}}>{fmt(c.v)}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="card" style={{marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+              <div>
+                <div style={{fontSize:11,color:"#8b949e",marginBottom:4}}>SALDO REALIZADO ({M[m]})</div>
+                <div className="mono" style={{fontSize:24,fontWeight:700,color:saldoReal>=0?"#58a6ff":"#f85149"}}>{fmt(saldoReal)}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:10,color:"#8b949e",marginBottom:4}}>SALDO PREVISTO</div>
+                <div className="mono" style={{fontSize:14,color:"#8b949e"}}>{fmt((recebido+aReceber)-(pago+aPagar))}</div>
+              </div>
+            </div>
+
+            <div className="card" style={{marginBottom:16}}>
+              <div className="sec-t">📈 Realizado — últimos 6 meses</div>
+              <div style={{display:"flex",gap:10,alignItems:"flex-end",height:130}}>
+                {hist.map((h,i)=>(
+                  <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <div style={{width:"100%",display:"flex",gap:3,alignItems:"flex-end",height:100}}>
+                      <div title={`Recebido: ${fmt(h.r)}`} style={{flex:1,background:"#238636",borderRadius:"3px 3px 0 0",height:`${(h.r/maxBar)*100}%`,minHeight:h.r>0?3:0}}/>
+                      <div title={`Pago: ${fmt(h.pg)}`} style={{flex:1,background:"#da3633",borderRadius:"3px 3px 0 0",height:`${(h.pg/maxBar)*100}%`,minHeight:h.pg>0?3:0}}/>
+                    </div>
+                    <div style={{fontSize:9,color:"#8b949e"}}>{h.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:14,marginTop:10}}>
+                <span style={{fontSize:10,color:"#3fb950"}}>■ Recebido</span>
+                <span style={{fontSize:10,color:"#f85149"}}>■ Pago</span>
+              </div>
+            </div>
+
+            {(aReceber>0 || aPagar>0) && (
+              <div className="card">
+                <div className="sec-t">⏳ Pendências do mês</div>
+                {dadosMes.filter(p=>p.status==="pendente").sort((a,b)=>new Date(a.dataVenc)-new Date(b.dataVenc)).slice(0,8).map((p,i)=>(
+                  <div key={i} className="row-i">
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
+                        <span className={`tag ${p.tipo==="entrada"?"t-arec":"t-apag"}`}>{p.tipo==="entrada"?"A Receber":"A Pagar"}</span>
+                        <span style={{fontSize:11,color:"#8b949e"}}>Vence {fmtD(p.dataVenc)}</span>
+                      </div>
+                      <div style={{fontWeight:600,fontSize:13}}>{p.cliente}</div>
+                      <div style={{fontSize:11,color:"#8b949e"}}>{p.categoria}{p.processo?` • ${p.processo}`:""}{p.nParcs>1?` • Parc. ${p.numero}/${p.nParcs}`:""}</div>
+                    </div>
+                    <div style={{textAlign:"right",display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                      <div className="mono" style={{fontSize:14,fontWeight:700,color:p.tipo==="entrada"?"#e3b341":"#ff7b9c"}}>{fmt(p.valor)}</div>
+                      <button className="btn-baixa" onClick={()=>setBaixaModal(p)}>✓ Dar Baixa</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {dadosMes.length===0 && (
+              <div style={{textAlign:"center",color:"#8b949e",marginTop:40}}>
+                <div style={{fontSize:32,marginBottom:12}}>📂</div>
+                <div style={{fontSize:14,marginBottom:16}}>Nenhum lançamento em {M[m]}.</div>
+                <button className="btn-p" onClick={()=>setView("lancamento")}>➕ Novo Lançamento</button>
+              </div>
+            )}
+          </>
+        )}
+
+        {view==="lancamento" && (
+          <div className="card" style={{maxWidth:740}}>
+            <div className="sec-t">{editId?"✏️ Editar Lançamento":"➕ Novo Lançamento"}</div>
+            <div style={{marginBottom:16}}>
+              <div className="lbl">Tipo *</div>
+              <div className="sw" style={{maxWidth:240}}>
+                <button className={`sw-b ${form.tipo==="entrada"?"act":""}`} onClick={()=>setF("tipo","entrada")}>↑ Entrada</button>
+                <button className={`sw-b ${form.tipo==="saida"?"act-r":""}`} onClick={()=>setF("tipo","saida")}>↓ Saída</button>
+              </div>
+            </div>
+            <div className="grid-resp-2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div>
+                <div className="lbl">{form.tipo==="entrada"?"Cliente *":"Fornecedor / Descrição *"}</div>
+                <input className="inp" placeholder={form.tipo==="entrada"?"Nome do cliente":"Ex: Aluguel, Energia, Salário João..."} value={form.cliente} onChange={e=>setF("cliente",e.target.value)} list="cli-l"/>
+                <datalist id="cli-l">{allClientes.map(c=><option key={c} value={c}/>)}</datalist>
+              </div>
+              <div>
+                <div className="lbl">Nº do Processo</div>
+                <input className="inp" placeholder="0000000-00.0000.0.00.0000" value={form.processo} onChange={e=>setF("processo",e.target.value)}/>
+              </div>
+              <div>
+                <div className="lbl">Parceria</div>
+                <input className="inp" placeholder="Parceiro / escritório" value={form.parceria} onChange={e=>setF("parceria",e.target.value)}/>
+              </div>
+              <div>
+                <div className="lbl">Conta Bancária *</div>
+                <select className="inp" value={form.contaBancaria} onChange={e=>setF("contaBancaria",e.target.value)}>
+                  {CONTAS.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Categoria</div>
+                <select className="inp" value={form.categoria} onChange={e=>setF("categoria",e.target.value)}>
+                  {cats.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Observações</div>
+                <input className="inp" placeholder="Descrição adicional" value={form.descricao} onChange={e=>setF("descricao",e.target.value)}/>
+              </div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div className="lbl">Forma de Pagamento</div>
+              <div className="sw" style={{maxWidth:260}}>
+                <button className={`sw-b ${form.formaPag==="avista"?"act":""}`} onClick={()=>setForm(p=>({...p,formaPag:"avista",parcelas:[newP(Date.now())]}))}>À Vista</button>
+                <button className={`sw-b ${form.formaPag==="parcelado"?"act":""}`} onClick={()=>setF("formaPag","parcelado")}>Parcelado</button>
+              </div>
+            </div>
+
+            <div style={{marginBottom:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                <div className="lbl" style={{margin:0}}>{form.formaPag==="avista"?"Valor e vencimento":`Parcelas (${form.parcelas.length})`}</div>
+                {form.formaPag==="parcelado" && <button className="btn-g" style={{padding:"5px 12px"}} onClick={addP}>+ Parcela</button>}
+              </div>
+
+              {form.parcelas.map((p,i)=>(
+                <div key={p.id} className={`pbox ${p.status==="baixado"?"bx":"pend"}`}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                    <span style={{fontSize:12,color:"#8b949e",fontWeight:600}}>
+                      {form.formaPag==="parcelado"?`Parcela ${i+1}`:"Lançamento"}
+                      {" "}<span className={`tag ${p.status==="baixado"?"t-rec":(form.tipo==="entrada"?"t-arec":"t-apag")}`} style={{marginLeft:6}}>
+                        {p.status==="baixado" ? (form.tipo==="entrada"?"Recebido":"Pago") : (form.tipo==="entrada"?"A Receber":"A Pagar")}
+                      </span>
+                    </span>
+                    {form.formaPag==="parcelado" && form.parcelas.length>1 && (
+                      <button className="btn-d" style={{padding:"2px 10px"}} onClick={()=>remP(p.id)}>✕</button>
+                    )}
+                  </div>
+                  <div className="grid-resp-2" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10}}>
+                    <div>
+                      <div className="lbl">Valor (R$) *</div>
+                      <input className="inp" placeholder="0,00" value={p.valor} onChange={e=>updP(p.id,"valor",e.target.value)}/>
+                    </div>
+                    <div>
+                      <div className="lbl">Vencimento</div>
+                      <input type="date" className="inp" value={p.dataVenc} onChange={e=>updP(p.id,"dataVenc",e.target.value)}/>
+                    </div>
+                    <div>
+                      <div className="lbl">Data Baixa</div>
+                      <input type="date" className="inp" value={p.dataBaixa} onChange={e=>updP(p.id,"dataBaixa",e.target.value)} disabled={p.status==="pendente"}/>
+                    </div>
+                    <div>
+                      <div className="lbl">Situação</div>
+                      <select className="inp" value={p.status} onChange={e=>{
+                        const ns=e.target.value;
+                        updP(p.id,"status",ns);
+                        if(ns==="baixado" && !p.dataBaixa) updP(p.id,"dataBaixa",today());
+                        if(ns==="pendente") updP(p.id,"dataBaixa","");
+                      }}>
+                        <option value="pendente">⏳ Pendente</option>
+                        <option value="baixado">✓ Baixado</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn-p" onClick={submit}>{editId?"💾 Salvar":"✓ Registrar"}</button>
+              {editId && <button className="btn-g" onClick={()=>{setEditId(null);setForm(emptyForm());}}>Cancelar</button>}
+            </div>
+            <div style={{marginTop:16,padding:12,background:"#0d1117",borderRadius:8,fontSize:11,color:"#8b949e",lineHeight:1.6}}>
+              💡 <b>Dica:</b> Lance todas as parcelas como <b>Pendente</b> (a receber/a pagar). Quando o pagamento ocorrer, dê baixa pelo Dashboard ou Extrato. Você pode também já registrar como <b>Baixado</b> se o valor já entrou/saiu.
+            </div>
+          </div>
+        )}
+
+        {view==="extrato" && (
+          <>
+            <div className="card" style={{marginBottom:14}}>
+              <div className="lbl">Situação</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+                {[["todos","Todos"],["pendentes","⏳ Pendentes"],["baixados","✓ Baixados"],["aReceber","↑ A Receber"],["recebidos","✓ Recebidos"],["aPagar","↓ A Pagar"],["pagos","✓ Pagos"]].map(([v,l])=>(
+                  <button key={v} className={`btn-g ${fSit===v?"act":""}`} onClick={()=>setFSit(v)}>{l}</button>
+                ))}
+              </div>
+              <div className="grid-resp-1" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+                <div><div className="lbl">Tipo</div>
+                  <select className="inp" value={fTipo} onChange={e=>setFTipo(e.target.value)}>
+                    <option value="todos">Todos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option>
+                  </select>
+                </div>
+                <div><div className="lbl">Conta Bancária</div>
+                  <select className="inp" value={fConta} onChange={e=>setFConta(e.target.value)}>
+                    <option value="todas">Todas</option>{CONTAS.map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div><div className="lbl">Cliente / Processo / Parceria</div>
+                  <input className="inp" placeholder="Buscar..." value={fBusca} onChange={e=>setFBusca(e.target.value)}/>
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+              <span style={{fontSize:12,color:"#8b949e"}}>{filtrado.length} resultado(s)</span>
+              <span className="mono" style={{color:"#3fb950",fontSize:12}}>✓ {fmt(filtrado.filter(p=>p.tipo==="entrada"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0))}</span>
+              <span className="mono" style={{color:"#f85149",fontSize:12}}>✓ {fmt(filtrado.filter(p=>p.tipo==="saida"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0))}</span>
+              <span className="mono" style={{color:"#e3b341",fontSize:12}}>⏳ {fmt(filtrado.filter(p=>p.status==="pendente").reduce((s,p)=>s+p.valor,0))}</span>
+              <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+                <button className="btn-g" onClick={expExcel} disabled={filtrado.length===0}>📊 Excel</button>
+                <button className="btn-g" onClick={expPDF} disabled={filtrado.length===0}>📄 PDF</button>
+              </div>
+            </div>
+
+            <div className="card">
+              {filtrado.length===0 && (
+                <div style={{textAlign:"center",color:"#8b949e",padding:"36px 0"}}>
+                  <div style={{fontSize:28,marginBottom:10}}>🔍</div>Nenhum registro encontrado.
+                </div>
+              )}
+              {filtrado.map((p,i)=>{
+                const sitLabel = p.status==="baixado" ? (p.tipo==="entrada"?"✓ Recebido":"✓ Pago") : (p.tipo==="entrada"?"⏳ A Receber":"⏳ A Pagar");
+                const sitClass = p.status==="baixado" ? "t-rec" : (p.tipo==="entrada"?"t-arec":"t-apag");
+                return (
+                <div key={i} className="row-i">
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,flexWrap:"wrap"}}>
+                      <span className={`tag ${p.tipo==="entrada"?"t-ent":"t-sai"}`}>{p.tipo==="entrada"?"↑ Entrada":"↓ Saída"}</span>
+                      <span className={`tag ${sitClass}`}>{sitLabel}</span>
+                      {p.nParcs>1 && <span style={{fontSize:10,color:"#8b949e",background:"#21262d",padding:"2px 8px",borderRadius:20}}>Parc. {p.numero}/{p.nParcs}</span>}
+                    </div>
+                    <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{p.cliente}</div>
+                    <div style={{fontSize:11,color:"#8b949e",display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <span>{p.categoria}</span>
+                      {p.processo && <span>• 📁 {p.processo}</span>}
+                      {p.parceria && <span>• 🤝 {p.parceria}</span>}
+                      <span>• 🏦 {p.contaBancaria}</span>
+                      <span>• Vence {fmtD(p.dataVenc)}</span>
+                      {p.status==="baixado" && <span>• ✓ Baixa {fmtD(p.dataBaixa)}</span>}
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                    <div className="mono" style={{fontSize:15,fontWeight:700,color:p.tipo==="entrada"?(p.status==="baixado"?"#3fb950":"#e3b341"):(p.status==="baixado"?"#f85149":"#ff7b9c")}}>
+                      {p.tipo==="entrada"?"+":"-"}{fmt(p.valor)}
+                    </div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                      {p.status==="pendente" && <button className="btn-baixa" onClick={()=>setBaixaModal(p)}>✓ Dar Baixa</button>}
+                      {p.status==="baixado" && <button className="btn-g" style={{padding:"4px 10px",fontSize:10}} onClick={()=>estornar(p.lid,p.id)}>↺ Estornar</button>}
+                      <button className="btn-g" style={{padding:"4px 10px",fontSize:10}} onClick={()=>editar(p.lid)}>✏️</button>
+                      <button className="btn-d" onClick={()=>excluir(p.lid)}>🗑</button>
+                    </div>
+                  </div>
+                </div>);
+              })}
+            </div>
+          </>
+        )}
+
+        {view==="config" && (
+          <div className="card" style={{maxWidth:560}}>
+            <div className="sec-t">⚙️ Configurações e Backup</div>
+            <div style={{padding:14,background:"#0d1117",borderRadius:8,marginBottom:18,fontSize:12,color:"#8b949e",lineHeight:1.6}}>
+              📦 <b style={{color:"#e6edf3"}}>Backup dos dados</b><br/>
+              Seus dados ficam salvos automaticamente no navegador deste dispositivo. Recomendamos exportar um backup periódico (ex: toda semana) para garantir a segurança das informações. O arquivo .json gerado pode ser restaurado a qualquer momento neste ou em outro dispositivo.
+            </div>
+            <div style={{display:"flex",gap:10,marginBottom:24,flexWrap:"wrap"}}>
+              <button className="btn-p" onClick={exportarBackup}>📥 Baixar Backup</button>
+              <label className="btn-g" style={{padding:"10px 18px",cursor:"pointer"}}>
+                📤 Restaurar Backup
+                <input type="file" accept=".json" onChange={importarBackup} style={{display:"none"}}/>
+              </label>
+            </div>
+
+            <div style={{padding:14,background:"#0d1117",borderRadius:8,marginBottom:14,fontSize:12,color:"#8b949e",lineHeight:1.6}}>
+              📊 <b style={{color:"#e6edf3"}}>Resumo geral</b><br/>
+              {data.length} lançamento(s) registrado(s) • {data.reduce((s,l)=>s+l.parcelas.length,0)} parcela(s) total
+            </div>
+
+            <div style={{padding:14,background:"#3d1f1f",borderRadius:8,fontSize:12,color:"#f85149",lineHeight:1.6,border:"1px solid #da363350"}}>
+              ⚠️ <b>Limpar todos os dados</b><br/>
+              Apaga permanentemente todos os lançamentos. Faça backup antes!
+              <div style={{marginTop:10}}>
+                <button className="btn-d" onClick={()=>{
+                  if(confirm("ATENÇÃO: Apagar TODOS os dados? Esta ação é irreversível. Você fez backup?")) {
+                    setData([]); tst("Todos os dados foram apagados.","err");
+                  }
+                }}>🗑 Apagar Tudo</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BaixaModal({ item, contas, onClose, onConfirm }) {
+  const [data, setData] = useState(new Date().toISOString().split("T")[0]);
+  const [conta, setConta] = useState(item.contaBancaria);
+  return (
+    <div className="mdl" onClick={onClose}>
+      <div className="mdl-c" onClick={e=>e.stopPropagation()}>
+        <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>{item.tipo==="entrada"?"✓ Confirmar Recebimento":"✓ Confirmar Pagamento"}</div>
+        <div style={{fontSize:12,color:"#8b949e",marginBottom:18}}>{item.cliente} — <span style={{color:item.tipo==="entrada"?"#3fb950":"#f85149",fontWeight:700}}>{fmt(item.valor)}</span>{item.nParcs>1?` (Parcela ${item.numero}/${item.nParcs})`:""}</div>
+        <div style={{marginBottom:14}}>
+          <div className="lbl">Data da Baixa *</div>
+          <input type="date" className="inp" value={data} onChange={e=>setData(e.target.value)}/>
+        </div>
+        <div style={{marginBottom:18}}>
+          <div className="lbl">Conta Bancária *</div>
+          <select className="inp" value={conta} onChange={e=>setConta(e.target.value)}>
+            {contas.map(c=><option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button className="btn-g" onClick={onClose}>Cancelar</button>
+          <button className="btn-p" onClick={()=>onConfirm(data,conta)}>Confirmar Baixa</button>
+        </div>
+      </div>
+    </div>
+  );
+}
