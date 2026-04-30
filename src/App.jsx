@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
+import { supabase, supabaseConfigurado, testarConexao } from "./supabase";
 
 const CAT_E = ["Honorários","Êxito/Acordo","Consultoria","Antecipação","Outras Receitas"];
 const CAT_S = ["Aluguel","Salários","Impostos/OAB","Marketing","Tecnologia","Deslocamento","Tarifas","Outras Despesas"];
@@ -122,6 +123,19 @@ function AppProtegido({ onLogout }) {
   const [fConta, setFConta] = useState("todas");
   const [fBusca, setFBusca] = useState("");
   const [baixaModal, setBaixaModal] = useState(null);
+  const [statusNuvem, setStatusNuvem] = useState({ verificando: true, conectado: false, erro: null });
+
+  // Testar conexão com Supabase ao carregar
+  useEffect(() => {
+    (async () => {
+      if (!supabaseConfigurado()) {
+        setStatusNuvem({ verificando: false, conectado: false, erro: "Variáveis não configuradas" });
+        return;
+      }
+      const r = await testarConexao();
+      setStatusNuvem({ verificando: false, conectado: r.ok, erro: r.erro || null });
+    })();
+  }, []);
 
   // Carregar do localStorage
   useEffect(() => {
@@ -702,6 +716,26 @@ function AppProtegido({ onLogout }) {
         {view==="config" && (
           <div className="card" style={{maxWidth:560}}>
             <div className="sec-t">⚙️ Configurações e Backup</div>
+
+            {/* STATUS DA NUVEM (Supabase) */}
+            <div style={{padding:14, borderRadius:8, marginBottom:18, fontSize:12, lineHeight:1.6,
+              background: statusNuvem.verificando ? "#f8fafc" : (statusNuvem.conectado ? "#f0fdf4" : "#fffbeb"),
+              border: `1px solid ${statusNuvem.verificando ? "#e2e8f0" : (statusNuvem.conectado ? "#bbf7d0" : "#fde68a")}`,
+              color: statusNuvem.verificando ? "#64748b" : (statusNuvem.conectado ? "#15803d" : "#a16207")
+            }}>
+              {statusNuvem.verificando && <>⏳ <b>Verificando conexão com a nuvem...</b></>}
+              {!statusNuvem.verificando && statusNuvem.conectado && (
+                <>☁️✅ <b style={{color:"#15803d"}}>Conectado à nuvem (Supabase)</b><br/>
+                  <span style={{color:"#475569"}}>Estrutura pronta para sincronização. Em breve seus dados serão sincronizados automaticamente entre dispositivos.</span></>
+              )}
+              {!statusNuvem.verificando && !statusNuvem.conectado && (
+                <>☁️⚠️ <b style={{color:"#a16207"}}>Nuvem não configurada</b><br/>
+                  <span style={{color:"#475569"}}>O sistema está funcionando localmente (no navegador). Para ativar sincronização entre dispositivos, configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_KEY no Vercel.</span>
+                  {statusNuvem.erro && <><br/><span style={{fontSize:10,color:"#94a3b8"}}>Detalhe técnico: {statusNuvem.erro}</span></>}
+                </>
+              )}
+            </div>
+
             <div style={{padding:14,background:"#f8fafc",borderRadius:8,marginBottom:18,fontSize:12,color:"#64748b",lineHeight:1.6}}>
               📦 <b style={{color:"#0f172a"}}>Backup dos dados</b><br/>
               Seus dados ficam salvos automaticamente no navegador deste dispositivo. Recomendamos exportar um backup periódico (ex: toda semana) para garantir a segurança das informações. O arquivo .json gerado pode ser restaurado a qualquer momento neste ou em outro dispositivo.
