@@ -17,8 +17,97 @@ const emptyForm = () => ({
 });
 
 const STORAGE_KEY = "fjur-data-v1";
+const SENHA_CORRETA = "Espanha2026@";
+const AUTH_KEY = "fjur-auth-v1";
+
+// Componente de tela de login
+function TelaLogin({ onSucesso }) {
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState(false);
+  const [tentativas, setTentativas] = useState(0);
+
+  const verificar = () => {
+    if (senha === SENHA_CORRETA) {
+      sessionStorage.setItem(AUTH_KEY, "true");
+      onSucesso();
+    } else {
+      setErro(true);
+      setTentativas(t => t + 1);
+      setTimeout(() => setErro(false), 600);
+      setSenha("");
+    }
+  };
+
+  return (
+    <div style={{
+      minHeight: "100vh", background: "#0d1117", color: "#e6edf3",
+      fontFamily: "'DM Sans','Segoe UI',sans-serif",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+        .shake { animation: shake .4s }
+        .login-inp { background:#0d1117; border:1px solid #30363d; color:#e6edf3; padding:12px 14px; border-radius:8px; font-size:14px; width:100%; font-family:inherit; outline:none; transition:border-color .2s }
+        .login-inp:focus { border-color:#58a6ff }
+        .login-btn { background:#238636; border:none; color:#fff; padding:12px; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; width:100%; font-family:inherit; transition:background .2s }
+        .login-btn:hover { background:#2ea043 }
+      `}</style>
+      <div className={erro ? "shake" : ""} style={{
+        background: "#161b22", border: `1px solid ${erro ? "#da3633" : "#21262d"}`,
+        borderRadius: 14, padding: 32, maxWidth: 380, width: "100%",
+        boxShadow: "0 8px 30px #00000060", textAlign: "center"
+      }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>⚖️</div>
+        <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>Financeiro Jurídico</div>
+        <div style={{ fontSize: 13, color: "#8b949e", marginBottom: 26 }}>Acesso restrito — informe sua senha</div>
+
+        <input
+          type="password"
+          className="login-inp"
+          placeholder="Digite sua senha"
+          value={senha}
+          onChange={e => setSenha(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && verificar()}
+          autoFocus
+          style={{ marginBottom: 14, textAlign: "center", letterSpacing: 2 }}
+        />
+
+        {erro && (
+          <div style={{ color: "#f85149", fontSize: 12, marginBottom: 14, fontWeight: 500 }}>
+            ⚠️ Senha incorreta{tentativas >= 3 ? " — tente novamente com calma" : ""}
+          </div>
+        )}
+
+        <button className="login-btn" onClick={verificar}>🔓 Entrar</button>
+
+        <div style={{ marginTop: 20, fontSize: 11, color: "#484f58", lineHeight: 1.5 }}>
+          🛡️ Sistema protegido<br/>
+          Esqueceu a senha? Entre em contato com a administradora.
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
+  const [autenticado, setAutenticado] = useState(false);
+  const [verificandoAuth, setVerificandoAuth] = useState(true);
+
+  useEffect(() => {
+    // Verifica se já está autenticado nesta sessão
+    const auth = sessionStorage.getItem(AUTH_KEY);
+    if (auth === "true") setAutenticado(true);
+    setVerificandoAuth(false);
+  }, []);
+
+  if (verificandoAuth) return <div style={{minHeight:"100vh",background:"#0d1117"}}/>;
+  if (!autenticado) return <TelaLogin onSucesso={() => setAutenticado(true)} />;
+
+  return <AppProtegido onLogout={() => { sessionStorage.removeItem(AUTH_KEY); setAutenticado(false); }} />;
+}
+
+function AppProtegido({ onLogout }) {
   const [data, setData] = useState([]);
   const [view, setView] = useState("dashboard");
   const [m, setM] = useState(new Date().getMonth());
@@ -316,6 +405,7 @@ export default function App() {
             {[["dashboard","📊 Dashboard"],["lancamento","➕ Lançar"],["extrato","📋 Extrato"],["config","⚙️"]].map(([v,l])=>(
               <button key={v} className={`nav-b ${view===v?"act":""}`} onClick={()=>{setView(v);if(v==="lancamento"){setForm(emptyForm());setEditId(null);}}}>{l}</button>
             ))}
+            <button className="nav-b" title="Sair" onClick={()=>{ if(confirm("Deseja sair do sistema?")) onLogout(); }} style={{color:"#f85149"}}>🔒</button>
           </div>
         </div>
       </div>
@@ -656,6 +746,12 @@ function BaixaModal({ item, contas, onClose, onConfirm }) {
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
           <button className="btn-g" onClick={onClose}>Cancelar</button>
           <button className="btn-p" onClick={()=>onConfirm(data,conta)}>Confirmar Baixa</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
         </div>
       </div>
     </div>
