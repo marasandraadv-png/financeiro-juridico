@@ -751,9 +751,3 @@ function BaixaModal({ item, contas, onClose, onConfirm }) {
     </div>
   );
 }
-
-        </div>
-      </div>
-    </div>
-  );
-}
