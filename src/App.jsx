@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { supabase, supabaseConfigurado, testarConexao } from "./supabase";
+import TelaClientes from "./TelaClientes";
 
 const CAT_E = ["Honorários","Êxito/Acordo","Consultoria","Antecipação","Outras Receitas"];
 const CAT_S = ["Aluguel","Salários","Impostos/OAB","Marketing","Tecnologia","Deslocamento","Tarifas","Outras Despesas"];
@@ -428,7 +429,7 @@ function AppProtegido({ onLogout }) {
             <span style={{fontWeight:700,fontSize:15,color:"#0f172a"}}>Financeiro Jurídico</span>
           </div>
           <div style={{display:"flex",gap:2}}>
-            {[["dashboard","📊 Dashboard"],["lancamento","➕ Lançar"],["extrato","📋 Extrato"],["config","⚙️"]].map(([v,l])=>(
+            {[["dashboard","📊 Dashboard"],["lancamento","➕ Lançar"],["extrato","📋 Extrato"],["clientes","👥 Clientes"],["config","⚙️"]].map(([v,l])=>(
               <button key={v} className={`nav-b ${view===v?"act":""}`} onClick={()=>{setView(v);if(v==="lancamento"){setForm(emptyForm());setEditId(null);}}}>{l}</button>
             ))}
             <button className="nav-b" title="Sair" onClick={()=>{ if(confirm("Deseja sair do sistema?")) onLogout(); }} style={{color:"#f43f5e"}}>🔒</button>
@@ -438,13 +439,15 @@ function AppProtegido({ onLogout }) {
 
       <div style={{maxWidth:1080,margin:"0 auto",padding:"24px 20px"}}>
 
-        {view!=="config" && (
+        {view!=="config" && view!=="clientes" && (
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
             <button className="btn-g" onClick={()=>{let mm=m-1,yy=y;if(mm<0){mm=11;yy--;}setM(mm);setY(yy);}}>‹</button>
             <span style={{fontWeight:600,fontSize:15,minWidth:160,textAlign:"center"}}>{M[m]} {y}</span>
             <button className="btn-g" onClick={()=>{let mm=m+1,yy=y;if(mm>11){mm=0;yy++;}setM(mm);setY(yy);}}>›</button>
           </div>
         )}
+
+        {view==="clientes" && <TelaClientes tst={tst} />}
 
         {view==="dashboard" && (
           <>
