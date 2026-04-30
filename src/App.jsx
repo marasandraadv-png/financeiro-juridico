@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { supabase, supabaseConfigurado, testarConexao } from "./supabase";
 import TelaClientes from "./TelaClientes";
+import AutocompleteCliente from "./AutocompleteCliente";
 
 const CAT_E = ["Honorários","Êxito/Acordo","Consultoria","Antecipação","Outras Receitas"];
 const CAT_S = ["Aluguel","Salários","Impostos/OAB","Marketing","Tecnologia","Deslocamento","Tarifas","Outras Despesas"];
@@ -13,7 +14,7 @@ const fmtD = (s) => s ? new Date(s+"T12:00:00").toLocaleDateString("pt-BR") : "�
 const today = () => new Date().toISOString().split("T")[0];
 const newP = (id) => ({ id, valor:"", dataVenc:today(), dataBaixa:"", status:"pendente" });
 const emptyForm = () => ({
-  tipo:"entrada", cliente:"", processo:"", parceria:"",
+  tipo:"entrada", cliente:"", clienteId:null, processo:"", parceria:"",
   categoria:CAT_E[0], descricao:"", formaPag:"avista",
   contaBancaria:"Bradesco", parcelas:[ newP(Date.now()) ]
 });
@@ -540,8 +541,24 @@ function AppProtegido({ onLogout }) {
             <div className="grid-resp-2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <div>
                 <div className="lbl">{form.tipo==="entrada"?"Cliente *":"Fornecedor / Descrição *"}</div>
-                <input className="inp" placeholder={form.tipo==="entrada"?"Nome do cliente":"Ex: Aluguel, Energia, Salário João..."} value={form.cliente} onChange={e=>setF("cliente",e.target.value)} list="cli-l"/>
-                <datalist id="cli-l">{allClientes.map(c=><option key={c} value={c}/>)}</datalist>
+                {form.tipo==="entrada" ? (
+                  <AutocompleteCliente
+                    valor={form.cliente}
+                    onChange={(nome, clienteObj) => {
+                      setF("cliente", nome);
+                      // Se selecionou um cliente cadastrado, e o processo está vazio,
+                      // pode preencher automaticamente outros campos no futuro
+                      if (clienteObj && clienteObj.id) {
+                        setF("clienteId", clienteObj.id);
+                      } else {
+                        setF("clienteId", null);
+                      }
+                    }}
+                    placeholder="Digite nome ou CPF do cliente cadastrado..."
+                  />
+                ) : (
+                  <input className="inp" placeholder="Ex: Aluguel, Energia, Salário João..." value={form.cliente} onChange={e=>setF("cliente",e.target.value)}/>
+                )}
               </div>
               <div>
                 <div className="lbl">Nº do Processo</div>
