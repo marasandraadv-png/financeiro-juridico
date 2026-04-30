@@ -40,27 +40,28 @@ function TelaLogin({ onSucesso }) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#0d1117", color: "#e6edf3",
-      fontFamily: "'DM Sans','Segoe UI',sans-serif",
+      minHeight: "100vh", background: "#f8fafc", color: "#1e293b",
+      fontFamily: "'Inter','DM Sans','Segoe UI',sans-serif",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
         .shake { animation: shake .4s }
-        .login-inp { background:#0d1117; border:1px solid #30363d; color:#e6edf3; padding:12px 14px; border-radius:8px; font-size:14px; width:100%; font-family:inherit; outline:none; transition:border-color .2s }
-        .login-inp:focus { border-color:#58a6ff }
-        .login-btn { background:#238636; border:none; color:#fff; padding:12px; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; width:100%; font-family:inherit; transition:background .2s }
-        .login-btn:hover { background:#2ea043 }
+        .login-inp { background:#fff; border:1.5px solid #e2e8f0; color:#1e293b; padding:13px 14px; border-radius:10px; font-size:14px; width:100%; font-family:inherit; outline:none; transition:border-color .2s, box-shadow .2s }
+        .login-inp:focus { border-color:#10b981; box-shadow:0 0 0 3px #10b98120 }
+        .login-btn { background:#10b981; border:none; color:#fff; padding:13px; border-radius:10px; cursor:pointer; font-weight:600; font-size:14px; width:100%; font-family:inherit; transition:background .2s, transform .1s }
+        .login-btn:hover { background:#059669 }
+        .login-btn:active { transform:scale(.98) }
       `}</style>
       <div className={erro ? "shake" : ""} style={{
-        background: "#161b22", border: `1px solid ${erro ? "#da3633" : "#21262d"}`,
-        borderRadius: 14, padding: 32, maxWidth: 380, width: "100%",
-        boxShadow: "0 8px 30px #00000060", textAlign: "center"
+        background: "#ffffff", border: `1.5px solid ${erro ? "#f43f5e" : "#e2e8f0"}`,
+        borderRadius: 16, padding: 36, maxWidth: 400, width: "100%",
+        boxShadow: "0 10px 40px #0f172a15", textAlign: "center"
       }}>
-        <div style={{ fontSize: 44, marginBottom: 12 }}>⚖️</div>
-        <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>Financeiro Jurídico</div>
-        <div style={{ fontSize: 13, color: "#8b949e", marginBottom: 26 }}>Acesso restrito — informe sua senha</div>
+        <div style={{ fontSize: 48, marginBottom: 14 }}>⚖️</div>
+        <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 6, color: "#0f172a" }}>Financeiro Jurídico</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 28 }}>Acesso restrito — informe sua senha</div>
 
         <input
           type="password"
@@ -74,14 +75,14 @@ function TelaLogin({ onSucesso }) {
         />
 
         {erro && (
-          <div style={{ color: "#f85149", fontSize: 12, marginBottom: 14, fontWeight: 500 }}>
+          <div style={{ color: "#f43f5e", fontSize: 12, marginBottom: 14, fontWeight: 500 }}>
             ⚠️ Senha incorreta{tentativas >= 3 ? " — tente novamente com calma" : ""}
           </div>
         )}
 
         <button className="login-btn" onClick={verificar}>🔓 Entrar</button>
 
-        <div style={{ marginTop: 20, fontSize: 11, color: "#484f58", lineHeight: 1.5 }}>
+        <div style={{ marginTop: 22, fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
           🛡️ Sistema protegido<br/>
           Esqueceu a senha? Entre em contato com a administradora.
         </div>
@@ -101,7 +102,7 @@ export default function App() {
     setVerificandoAuth(false);
   }, []);
 
-  if (verificandoAuth) return <div style={{minHeight:"100vh",background:"#0d1117"}}/>;
+  if (verificandoAuth) return <div style={{minHeight:"100vh",background:"#f8fafc"}}/>;
   if (!autenticado) return <TelaLogin onSucesso={() => setAutenticado(true)} />;
 
   return <AppProtegido onLogout={() => { sessionStorage.removeItem(AUTH_KEY); setAutenticado(false); }} />;
@@ -341,42 +342,53 @@ function AppProtegido({ onLogout }) {
   const allClientes = [...new Set(data.map(l=>l.cliente).filter(Boolean))];
 
   const S = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
     *{box-sizing:border-box}
-    ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#161b22}::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#94a3b8}
     input,select{outline:none}
-    .inp{background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:9px 12px;border-radius:8px;font-size:13px;width:100%;font-family:inherit}
-    .inp:focus{border-color:#58a6ff}.inp::placeholder{color:#484f58}
-    .card{background:#161b22;border:1px solid #21262d;border-radius:12px;padding:20px}
-    .lbl{font-size:11px;color:#8b949e;margin-bottom:5px;font-weight:500}
-    .btn-p{background:#238636;border:none;color:#fff;padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit}
-    .btn-p:hover{background:#2ea043}
-    .btn-g{background:transparent;border:1px solid #30363d;color:#8b949e;padding:7px 13px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .2s}
-    .btn-g:hover{border-color:#58a6ff;color:#58a6ff}.btn-g:disabled{opacity:.4}.btn-g.act{border-color:#58a6ff;color:#58a6ff;background:#1f2d4a30}
-    .btn-d{background:transparent;border:1px solid #da3633;color:#f85149;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit}
-    .btn-d:hover{background:#3d1f1f}
-    .btn-baixa{background:#238636;border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit}
-    .btn-baixa:hover{background:#2ea043}
-    .nav-b{background:transparent;border:none;color:#8b949e;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;white-space:nowrap}
-    .nav-b.act{background:#21262d;color:#e6edf3}.nav-b:hover:not(.act){color:#c9d1d9}
-    .row-i{display:flex;align-items:flex-start;padding:14px 0;border-bottom:1px solid #21262d;gap:12px}
+    .inp{background:#fff;border:1.5px solid #e2e8f0;color:#1e293b;padding:9px 12px;border-radius:8px;font-size:13px;width:100%;font-family:inherit;transition:border-color .2s, box-shadow .2s}
+    .inp:focus{border-color:#10b981;box-shadow:0 0 0 3px #10b98115}
+    .inp::placeholder{color:#94a3b8}
+    .inp:disabled{background:#f8fafc;color:#94a3b8}
+    .card{background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;box-shadow:0 1px 3px #0f172a08}
+    .lbl{font-size:11px;color:#64748b;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+    .btn-p{background:#10b981;border:none;color:#fff;padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit;transition:background .2s, transform .1s}
+    .btn-p:hover{background:#059669}
+    .btn-p:active{transform:scale(.98)}
+    .btn-g{background:#fff;border:1.5px solid #e2e8f0;color:#475569;padding:7px 13px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .2s;font-weight:500}
+    .btn-g:hover{border-color:#10b981;color:#10b981;background:#f0fdf4}
+    .btn-g:disabled{opacity:.4;cursor:not-allowed}
+    .btn-g.act{border-color:#10b981;color:#10b981;background:#f0fdf4;font-weight:600}
+    .btn-d{background:#fff;border:1.5px solid #fecdd3;color:#f43f5e;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:500;transition:all .2s}
+    .btn-d:hover{background:#fff1f2;border-color:#f43f5e}
+    .btn-ed{background:#fff;border:1.5px solid #e2e8f0;color:#64748b;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:500;transition:all .2s}
+    .btn-ed:hover{border-color:#3b82f6;color:#3b82f6;background:#eff6ff}
+    .btn-baixa{background:#10b981;border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;transition:background .2s}
+    .btn-baixa:hover{background:#059669}
+    .nav-b{background:transparent;border:none;color:#64748b;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;white-space:nowrap;transition:all .2s}
+    .nav-b.act{background:#f0fdf4;color:#10b981;font-weight:600}
+    .nav-b:hover:not(.act){color:#10b981;background:#f8fafc}
+    .row-i{display:flex;align-items:flex-start;padding:14px 0;border-bottom:1px solid #f1f5f9;gap:12px}
     .row-i:last-child{border-bottom:none}
-    .tag{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
-    .t-ent{background:#1f4a2e;color:#3fb950}.t-sai{background:#3d1f1f;color:#f85149}
-    .t-rec{background:#1f4a2e;color:#3fb950}.t-pago{background:#1f4a2e;color:#3fb950}
-    .t-arec{background:#2d2a1a;color:#e3b341}.t-apag{background:#3a1f2d;color:#ff7b9c}
-    .sw{display:flex;background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden}
-    .sw-b{flex:1;padding:8px;background:transparent;border:none;color:#8b949e;font-size:13px;font-family:inherit;cursor:pointer}
-    .sw-b.act{background:#238636;color:#fff;font-weight:600}
-    .sw-b.act-r{background:#da3633;color:#fff;font-weight:600}
-    .pbox{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;margin-bottom:10px}
-    .pbox.pend{border-left:3px solid #e3b341}
-    .pbox.bx{border-left:3px solid #3fb950}
-    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 20px #00000080}
-    .sec-t{font-weight:700;font-size:14px;margin-bottom:16px}
+    .tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;display:inline-block;letter-spacing:.2px}
+    .t-ent{background:#dcfce7;color:#15803d}
+    .t-sai{background:#fee2e2;color:#b91c1c}
+    .t-rec{background:#dcfce7;color:#15803d}
+    .t-pago{background:#dcfce7;color:#15803d}
+    .t-arec{background:#fef3c7;color:#a16207}
+    .t-apag{background:#fce7f3;color:#be185d}
+    .sw{display:flex;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden;padding:3px}
+    .sw-b{flex:1;padding:8px;background:transparent;border:none;color:#64748b;font-size:13px;font-family:inherit;cursor:pointer;border-radius:6px;font-weight:500;transition:all .2s}
+    .sw-b.act{background:#10b981;color:#fff;font-weight:600}
+    .sw-b.act-r{background:#f43f5e;color:#fff;font-weight:600}
+    .pbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:10px}
+    .pbox.pend{border-left:3px solid #f59e0b}
+    .pbox.bx{border-left:3px solid #10b981}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 10px 40px #0f172a25}
+    .sec-t{font-weight:700;font-size:14px;margin-bottom:16px;color:#0f172a}
     .mono{font-family:'DM Mono',monospace}
-    .mdl{position:fixed;inset:0;background:#00000099;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
-    .mdl-c{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:420px;width:100%}
+    .mdl{position:fixed;inset:0;background:#0f172a90;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+    .mdl-c{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:26px;max-width:420px;width:100%;box-shadow:0 20px 60px #0f172a30}
     @media (max-width: 720px) {
       .grid-resp { grid-template-columns: 1fr 1fr !important; }
       .grid-resp-1 { grid-template-columns: 1fr !important; }
@@ -386,26 +398,26 @@ function AppProtegido({ onLogout }) {
   `;
 
   return (
-    <div style={{minHeight:"100vh",background:"#0d1117",color:"#e6edf3",fontFamily:"'DM Sans','Segoe UI',sans-serif",paddingBottom:60}}>
+    <div style={{minHeight:"100vh",background:"#f8fafc",color:"#1e293b",fontFamily:"'Inter','DM Sans','Segoe UI',sans-serif",paddingBottom:60}}>
       <style>{S}</style>
 
-      {toast && <div className="toast" style={{background:toast.type==="err"?"#3d1f1f":"#1a3a28",color:toast.type==="err"?"#f85149":"#3fb950",border:`1px solid ${toast.type==="err"?"#da3633":"#238636"}`}}>{toast.msg}</div>}
+      {toast && <div className="toast" style={{background:toast.type==="err"?"#fff1f2":"#f0fdf4",color:toast.type==="err"?"#b91c1c":"#15803d",border:`1.5px solid ${toast.type==="err"?"#fecdd3":"#bbf7d0"}`}}>{toast.msg}</div>}
 
       {baixaModal && (
         <BaixaModal item={baixaModal} contas={CONTAS} onClose={()=>setBaixaModal(null)} onConfirm={(d,c)=>baixar(baixaModal.lid,baixaModal.id,d,c)} />
       )}
 
-      <div style={{background:"#161b22",borderBottom:"1px solid #21262d",padding:"0 20px",position:"sticky",top:0,zIndex:100}}>
-        <div style={{maxWidth:1080,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:58,gap:8,flexWrap:"wrap"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:20}}>⚖️</span>
-            <span style={{fontWeight:700,fontSize:15}}>Financeiro Jurídico</span>
+      <div style={{background:"#ffffff",borderBottom:"1px solid #e2e8f0",padding:"0 20px",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 3px #0f172a08"}}>
+        <div style={{maxWidth:1080,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:60,gap:8,flexWrap:"wrap"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:22}}>⚖️</span>
+            <span style={{fontWeight:700,fontSize:15,color:"#0f172a"}}>Financeiro Jurídico</span>
           </div>
           <div style={{display:"flex",gap:2}}>
             {[["dashboard","📊 Dashboard"],["lancamento","➕ Lançar"],["extrato","📋 Extrato"],["config","⚙️"]].map(([v,l])=>(
               <button key={v} className={`nav-b ${view===v?"act":""}`} onClick={()=>{setView(v);if(v==="lancamento"){setForm(emptyForm());setEditId(null);}}}>{l}</button>
             ))}
-            <button className="nav-b" title="Sair" onClick={()=>{ if(confirm("Deseja sair do sistema?")) onLogout(); }} style={{color:"#f85149"}}>🔒</button>
+            <button className="nav-b" title="Sair" onClick={()=>{ if(confirm("Deseja sair do sistema?")) onLogout(); }} style={{color:"#f43f5e"}}>🔒</button>
           </div>
         </div>
       </div>
@@ -424,13 +436,13 @@ function AppProtegido({ onLogout }) {
           <>
             <div className="grid-resp" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
               {[
-                {l:"✓ Recebido",v:recebido,c:"#3fb950",b:"#1f4a2e"},
-                {l:"✓ Pago",v:pago,c:"#f85149",b:"#3d1f1f"},
-                {l:"⏳ A Receber",v:aReceber,c:"#e3b341",b:"#2d2a1a"},
-                {l:"⏳ A Pagar",v:aPagar,c:"#ff7b9c",b:"#3a1f2d"},
+                {l:"✓ Recebido",v:recebido,c:"#15803d",b:"#bbf7d0",bg:"#f0fdf4"},
+                {l:"✓ Pago",v:pago,c:"#b91c1c",b:"#fecdd3",bg:"#fff1f2"},
+                {l:"⏳ A Receber",v:aReceber,c:"#a16207",b:"#fde68a",bg:"#fffbeb"},
+                {l:"⏳ A Pagar",v:aPagar,c:"#be185d",b:"#fbcfe8",bg:"#fdf2f8"},
               ].map(c=>(
-                <div key={c.l} className="card" style={{borderColor:c.b,padding:16}}>
-                  <div style={{fontSize:11,color:"#8b949e",marginBottom:6,fontWeight:500}}>{c.l}</div>
+                <div key={c.l} className="card" style={{borderColor:c.b,background:c.bg,padding:16}}>
+                  <div style={{fontSize:11,color:"#64748b",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.3}}>{c.l}</div>
                   <div className="mono" style={{color:c.c,fontSize:18,fontWeight:700}}>{fmt(c.v)}</div>
                 </div>
               ))}
@@ -438,12 +450,12 @@ function AppProtegido({ onLogout }) {
 
             <div className="card" style={{marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
               <div>
-                <div style={{fontSize:11,color:"#8b949e",marginBottom:4}}>SALDO REALIZADO ({M[m]})</div>
-                <div className="mono" style={{fontSize:24,fontWeight:700,color:saldoReal>=0?"#58a6ff":"#f85149"}}>{fmt(saldoReal)}</div>
+                <div style={{fontSize:11,color:"#64748b",marginBottom:4,fontWeight:600,textTransform:"uppercase",letterSpacing:.3}}>SALDO REALIZADO ({M[m]})</div>
+                <div className="mono" style={{fontSize:26,fontWeight:700,color:saldoReal>=0?"#10b981":"#f43f5e"}}>{fmt(saldoReal)}</div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{fontSize:10,color:"#8b949e",marginBottom:4}}>SALDO PREVISTO</div>
-                <div className="mono" style={{fontSize:14,color:"#8b949e"}}>{fmt((recebido+aReceber)-(pago+aPagar))}</div>
+                <div style={{fontSize:10,color:"#94a3b8",marginBottom:4,fontWeight:500,textTransform:"uppercase"}}>SALDO PREVISTO</div>
+                <div className="mono" style={{fontSize:14,color:"#64748b"}}>{fmt((recebido+aReceber)-(pago+aPagar))}</div>
               </div>
             </div>
 
@@ -453,16 +465,16 @@ function AppProtegido({ onLogout }) {
                 {hist.map((h,i)=>(
                   <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                     <div style={{width:"100%",display:"flex",gap:3,alignItems:"flex-end",height:100}}>
-                      <div title={`Recebido: ${fmt(h.r)}`} style={{flex:1,background:"#238636",borderRadius:"3px 3px 0 0",height:`${(h.r/maxBar)*100}%`,minHeight:h.r>0?3:0}}/>
-                      <div title={`Pago: ${fmt(h.pg)}`} style={{flex:1,background:"#da3633",borderRadius:"3px 3px 0 0",height:`${(h.pg/maxBar)*100}%`,minHeight:h.pg>0?3:0}}/>
+                      <div title={`Recebido: ${fmt(h.r)}`} style={{flex:1,background:"#10b981",borderRadius:"4px 4px 0 0",height:`${(h.r/maxBar)*100}%`,minHeight:h.r>0?3:0}}/>
+                      <div title={`Pago: ${fmt(h.pg)}`} style={{flex:1,background:"#f43f5e",borderRadius:"4px 4px 0 0",height:`${(h.pg/maxBar)*100}%`,minHeight:h.pg>0?3:0}}/>
                     </div>
-                    <div style={{fontSize:9,color:"#8b949e"}}>{h.label}</div>
+                    <div style={{fontSize:10,color:"#64748b",fontWeight:500}}>{h.label}</div>
                   </div>
                 ))}
               </div>
-              <div style={{display:"flex",gap:14,marginTop:10}}>
-                <span style={{fontSize:10,color:"#3fb950"}}>■ Recebido</span>
-                <span style={{fontSize:10,color:"#f85149"}}>■ Pago</span>
+              <div style={{display:"flex",gap:14,marginTop:12}}>
+                <span style={{fontSize:11,color:"#15803d",fontWeight:600}}>■ Recebido</span>
+                <span style={{fontSize:11,color:"#b91c1c",fontWeight:600}}>■ Pago</span>
               </div>
             </div>
 
@@ -474,13 +486,13 @@ function AppProtegido({ onLogout }) {
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
                         <span className={`tag ${p.tipo==="entrada"?"t-arec":"t-apag"}`}>{p.tipo==="entrada"?"A Receber":"A Pagar"}</span>
-                        <span style={{fontSize:11,color:"#8b949e"}}>Vence {fmtD(p.dataVenc)}</span>
+                        <span style={{fontSize:11,color:"#64748b"}}>Vence {fmtD(p.dataVenc)}</span>
                       </div>
-                      <div style={{fontWeight:600,fontSize:13}}>{p.cliente}</div>
-                      <div style={{fontSize:11,color:"#8b949e"}}>{p.categoria}{p.processo?` • ${p.processo}`:""}{p.nParcs>1?` • Parc. ${p.numero}/${p.nParcs}`:""}</div>
+                      <div style={{fontWeight:600,fontSize:13,color:"#0f172a"}}>{p.cliente}</div>
+                      <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{p.categoria}{p.processo?` • ${p.processo}`:""}{p.nParcs>1?` • Parc. ${p.numero}/${p.nParcs}`:""}</div>
                     </div>
                     <div style={{textAlign:"right",display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
-                      <div className="mono" style={{fontSize:14,fontWeight:700,color:p.tipo==="entrada"?"#e3b341":"#ff7b9c"}}>{fmt(p.valor)}</div>
+                      <div className="mono" style={{fontSize:14,fontWeight:700,color:p.tipo==="entrada"?"#a16207":"#be185d"}}>{fmt(p.valor)}</div>
                       <button className="btn-baixa" onClick={()=>setBaixaModal(p)}>✓ Dar Baixa</button>
                     </div>
                   </div>
@@ -489,9 +501,9 @@ function AppProtegido({ onLogout }) {
             )}
 
             {dadosMes.length===0 && (
-              <div style={{textAlign:"center",color:"#8b949e",marginTop:40}}>
-                <div style={{fontSize:32,marginBottom:12}}>📂</div>
-                <div style={{fontSize:14,marginBottom:16}}>Nenhum lançamento em {M[m]}.</div>
+              <div style={{textAlign:"center",color:"#64748b",marginTop:40}}>
+                <div style={{fontSize:36,marginBottom:12}}>📂</div>
+                <div style={{fontSize:14,marginBottom:16,color:"#475569"}}>Nenhum lançamento em {M[m]}.</div>
                 <button className="btn-p" onClick={()=>setView("lancamento")}>➕ Novo Lançamento</button>
               </div>
             )}
@@ -556,7 +568,7 @@ function AppProtegido({ onLogout }) {
               {form.parcelas.map((p,i)=>(
                 <div key={p.id} className={`pbox ${p.status==="baixado"?"bx":"pend"}`}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-                    <span style={{fontSize:12,color:"#8b949e",fontWeight:600}}>
+                    <span style={{fontSize:12,color:"#64748b",fontWeight:600}}>
                       {form.formaPag==="parcelado"?`Parcela ${i+1}`:"Lançamento"}
                       {" "}<span className={`tag ${p.status==="baixado"?"t-rec":(form.tipo==="entrada"?"t-arec":"t-apag")}`} style={{marginLeft:6}}>
                         {p.status==="baixado" ? (form.tipo==="entrada"?"Recebido":"Pago") : (form.tipo==="entrada"?"A Receber":"A Pagar")}
@@ -600,7 +612,7 @@ function AppProtegido({ onLogout }) {
               <button className="btn-p" onClick={submit}>{editId?"💾 Salvar":"✓ Registrar"}</button>
               {editId && <button className="btn-g" onClick={()=>{setEditId(null);setForm(emptyForm());}}>Cancelar</button>}
             </div>
-            <div style={{marginTop:16,padding:12,background:"#0d1117",borderRadius:8,fontSize:11,color:"#8b949e",lineHeight:1.6}}>
+            <div style={{marginTop:16,padding:12,background:"#f8fafc",borderRadius:8,fontSize:11,color:"#64748b",lineHeight:1.6}}>
               💡 <b>Dica:</b> Lance todas as parcelas como <b>Pendente</b> (a receber/a pagar). Quando o pagamento ocorrer, dê baixa pelo Dashboard ou Extrato. Você pode também já registrar como <b>Baixado</b> se o valor já entrou/saiu.
             </div>
           </div>
@@ -633,10 +645,10 @@ function AppProtegido({ onLogout }) {
             </div>
 
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,flexWrap:"wrap"}}>
-              <span style={{fontSize:12,color:"#8b949e"}}>{filtrado.length} resultado(s)</span>
-              <span className="mono" style={{color:"#3fb950",fontSize:12}}>✓ {fmt(filtrado.filter(p=>p.tipo==="entrada"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0))}</span>
-              <span className="mono" style={{color:"#f85149",fontSize:12}}>✓ {fmt(filtrado.filter(p=>p.tipo==="saida"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0))}</span>
-              <span className="mono" style={{color:"#e3b341",fontSize:12}}>⏳ {fmt(filtrado.filter(p=>p.status==="pendente").reduce((s,p)=>s+p.valor,0))}</span>
+              <span style={{fontSize:12,color:"#64748b"}}>{filtrado.length} resultado(s)</span>
+              <span className="mono" style={{color:"#15803d",fontSize:12}}>✓ {fmt(filtrado.filter(p=>p.tipo==="entrada"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0))}</span>
+              <span className="mono" style={{color:"#b91c1c",fontSize:12}}>✓ {fmt(filtrado.filter(p=>p.tipo==="saida"&&p.status==="baixado").reduce((s,p)=>s+p.valor,0))}</span>
+              <span className="mono" style={{color:"#a16207",fontSize:12}}>⏳ {fmt(filtrado.filter(p=>p.status==="pendente").reduce((s,p)=>s+p.valor,0))}</span>
               <div style={{marginLeft:"auto",display:"flex",gap:8}}>
                 <button className="btn-g" onClick={expExcel} disabled={filtrado.length===0}>📊 Excel</button>
                 <button className="btn-g" onClick={expPDF} disabled={filtrado.length===0}>📄 PDF</button>
@@ -645,7 +657,7 @@ function AppProtegido({ onLogout }) {
 
             <div className="card">
               {filtrado.length===0 && (
-                <div style={{textAlign:"center",color:"#8b949e",padding:"36px 0"}}>
+                <div style={{textAlign:"center",color:"#64748b",padding:"36px 0"}}>
                   <div style={{fontSize:28,marginBottom:10}}>🔍</div>Nenhum registro encontrado.
                 </div>
               )}
@@ -658,10 +670,10 @@ function AppProtegido({ onLogout }) {
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,flexWrap:"wrap"}}>
                       <span className={`tag ${p.tipo==="entrada"?"t-ent":"t-sai"}`}>{p.tipo==="entrada"?"↑ Entrada":"↓ Saída"}</span>
                       <span className={`tag ${sitClass}`}>{sitLabel}</span>
-                      {p.nParcs>1 && <span style={{fontSize:10,color:"#8b949e",background:"#21262d",padding:"2px 8px",borderRadius:20}}>Parc. {p.numero}/{p.nParcs}</span>}
+                      {p.nParcs>1 && <span style={{fontSize:10,color:"#64748b",background:"#e2e8f0",padding:"2px 8px",borderRadius:20}}>Parc. {p.numero}/{p.nParcs}</span>}
                     </div>
                     <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{p.cliente}</div>
-                    <div style={{fontSize:11,color:"#8b949e",display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <div style={{fontSize:11,color:"#64748b",display:"flex",gap:8,flexWrap:"wrap"}}>
                       <span>{p.categoria}</span>
                       {p.processo && <span>• 📁 {p.processo}</span>}
                       {p.parceria && <span>• 🤝 {p.parceria}</span>}
@@ -671,7 +683,7 @@ function AppProtegido({ onLogout }) {
                     </div>
                   </div>
                   <div style={{textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-                    <div className="mono" style={{fontSize:15,fontWeight:700,color:p.tipo==="entrada"?(p.status==="baixado"?"#3fb950":"#e3b341"):(p.status==="baixado"?"#f85149":"#ff7b9c")}}>
+                    <div className="mono" style={{fontSize:15,fontWeight:700,color:p.tipo==="entrada"?(p.status==="baixado"?"#15803d":"#a16207"):(p.status==="baixado"?"#b91c1c":"#be185d")}}>
                       {p.tipo==="entrada"?"+":"-"}{fmt(p.valor)}
                     </div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
@@ -690,8 +702,8 @@ function AppProtegido({ onLogout }) {
         {view==="config" && (
           <div className="card" style={{maxWidth:560}}>
             <div className="sec-t">⚙️ Configurações e Backup</div>
-            <div style={{padding:14,background:"#0d1117",borderRadius:8,marginBottom:18,fontSize:12,color:"#8b949e",lineHeight:1.6}}>
-              📦 <b style={{color:"#e6edf3"}}>Backup dos dados</b><br/>
+            <div style={{padding:14,background:"#f8fafc",borderRadius:8,marginBottom:18,fontSize:12,color:"#64748b",lineHeight:1.6}}>
+              📦 <b style={{color:"#0f172a"}}>Backup dos dados</b><br/>
               Seus dados ficam salvos automaticamente no navegador deste dispositivo. Recomendamos exportar um backup periódico (ex: toda semana) para garantir a segurança das informações. O arquivo .json gerado pode ser restaurado a qualquer momento neste ou em outro dispositivo.
             </div>
             <div style={{display:"flex",gap:10,marginBottom:24,flexWrap:"wrap"}}>
@@ -702,12 +714,12 @@ function AppProtegido({ onLogout }) {
               </label>
             </div>
 
-            <div style={{padding:14,background:"#0d1117",borderRadius:8,marginBottom:14,fontSize:12,color:"#8b949e",lineHeight:1.6}}>
-              📊 <b style={{color:"#e6edf3"}}>Resumo geral</b><br/>
+            <div style={{padding:14,background:"#f8fafc",borderRadius:8,marginBottom:14,fontSize:12,color:"#64748b",lineHeight:1.6}}>
+              📊 <b style={{color:"#0f172a"}}>Resumo geral</b><br/>
               {data.length} lançamento(s) registrado(s) • {data.reduce((s,l)=>s+l.parcelas.length,0)} parcela(s) total
             </div>
 
-            <div style={{padding:14,background:"#3d1f1f",borderRadius:8,fontSize:12,color:"#f85149",lineHeight:1.6,border:"1px solid #da363350"}}>
+            <div style={{padding:14,background:"#fff1f2",borderRadius:8,fontSize:12,color:"#b91c1c",lineHeight:1.6,border:"1px solid #f43f5e50"}}>
               ⚠️ <b>Limpar todos os dados</b><br/>
               Apaga permanentemente todos os lançamentos. Faça backup antes!
               <div style={{marginTop:10}}>
@@ -732,7 +744,7 @@ function BaixaModal({ item, contas, onClose, onConfirm }) {
     <div className="mdl" onClick={onClose}>
       <div className="mdl-c" onClick={e=>e.stopPropagation()}>
         <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>{item.tipo==="entrada"?"✓ Confirmar Recebimento":"✓ Confirmar Pagamento"}</div>
-        <div style={{fontSize:12,color:"#8b949e",marginBottom:18}}>{item.cliente} — <span style={{color:item.tipo==="entrada"?"#3fb950":"#f85149",fontWeight:700}}>{fmt(item.valor)}</span>{item.nParcs>1?` (Parcela ${item.numero}/${item.nParcs})`:""}</div>
+        <div style={{fontSize:12,color:"#64748b",marginBottom:18}}>{item.cliente} — <span style={{color:item.tipo==="entrada"?"#15803d":"#b91c1c",fontWeight:700}}>{fmt(item.valor)}</span>{item.nParcs>1?` (Parcela ${item.numero}/${item.nParcs})`:""}</div>
         <div style={{marginBottom:14}}>
           <div className="lbl">Data da Baixa *</div>
           <input type="date" className="inp" value={data} onChange={e=>setData(e.target.value)}/>
